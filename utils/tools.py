@@ -102,7 +102,7 @@ def write_predict_denoise(pred, i, fldr_output):
 def write_predict_seg(pred, i, fldr_output):
     
     # move predicion to cpu and save
-    pred = pred.to(device='cpu')[0][0]
+    pred = pred.to(device='cpu')[0]
     pred = pred.numpy()
     plt.imsave(os.path.join(fldr_output, f"{i:04}.tiff"), pred, cmap='gray')
     
