@@ -8,7 +8,7 @@ For both tasks, the network layers were adjusted to accommodate a larger image s
 
 ## Denoising
 
-Denoising and regression of CT images are interesting because they enable faster acquisition times with less radiation exposure. Images to train the network consisted of acquiring two scans of the same sample. A low-quality (noisy) scan was obtained for input, and a high-quality scan was acquired as the target. The pairing of these images resulted in a supervised dataset. The U-net learned to reduce noise from the input image by minimizing the MSE between the network output and the target images. Below is an example of the denoised image after only ten epochs of training. 
+Denoising or regression of CT images is interesting because it enables faster acquisition times with less radiation exposure. Images to train the network consisted of acquiring two scans of the same sample. A low-quality (noisy) scan was obtained for input, and a high-quality scan was acquired as the target. The pairing of these images resulted in a supervised dataset. The U-net learned to reduce noise from the input image by minimizing the MSE between the network output and the target images. Below is an example of the denoised image after only ten epochs of training. 
 
 <table>
   <tr>
