@@ -194,3 +194,91 @@ class UModel_Segment(nn.Module):
         
         return x
     
+class UModel_Segment_clsm(nn.Module):
+    '''
+    Combines a basic block, downsample block, and an upsample block to create the U-net architecture
+    Input:  
+      input_channels -- number of input channels
+      num_classes    -- number of output classes
+      depth          -- how many layers deep to create the network
+      first_layer    -- number of channels in the first layer
+
+    Output: 
+      x -- a tensor after completeing the forward pass through the network
+    '''
+    def __init__(self, input_channels=1, num_classes=2, depth=5, first_layer=64, basic_block=BasicBlock, down_block=DownBlock, up_block=UpBlock):
+        super().__init__()
+
+        self._input_channels = input_channels
+        self._num_classes = num_classes
+        self._depth = depth
+        self._first_layer = first_layer
+    
+        # going down
+        # define down channels
+        pow, _ = self._next_pow2(first_layer)
+        channels_down = [(input_channels, first_layer)]
+        channels_down += [(2**(pow+i), 2**(pow+i+1)) for i in range((depth-2))]
+
+        # define down blocks
+        self.down_blocks=[]
+        for c0, c1 in channels_down:
+            self.down_blocks.append(down_block(c0, c1))
+        
+        # define bottleneck
+        c0 = channels_down[-1][1]
+        _, c1 = self._next_pow2(c0+1)
+        self.bottle = basic_block(c0, c1)
+
+        # going up
+        # define up channels
+        channels_up = [(c1, c0)]
+        channels_up += [(c0, c1) for c1, c0 in channels_down[1:][::-1]]
+
+        # define up blocks
+        self.up_blocks=[]
+        for c0, c1 in channels_up:
+            self.up_blocks.append(up_block(c0, c1))
+        
+        # final batch normalization and 1x1 convolution to match input
+        c0 = channels_up[-1][1]
+        c1 = num_classes
+
+        self.bn_finish = nn.BatchNorm2d(c0)
+        self.finish = nn.Conv2d(c0, c1, kernel_size=1)
+
+    def _next_pow2(self, x):
+        pow=0
+        while 2**pow < x:
+            pow+=1
+        return pow, 2**pow
+        
+    def forward(self, x):
+
+        # downsample
+        print('Down')
+        skips=[]
+        for block in self.down_blocks:
+            x, s = block(x)
+            print(x.shape)
+            skips.append(s)
+        
+        # middle layers
+        print('Bottle')
+        x = self.bottle(x)
+        print(x.shape)
+        
+        # upsample with skip connections
+        print('Up')
+        skips = skips[::-1]
+        for i, block in enumerate(self.up_blocks):
+            x = block(x, skips[i])
+            print(x.shape)
+        
+        print('Finish')
+        # reshape with 1x1
+        x = self.bn_finish(x)
+        x = self.finish(x)
+        print(x.shape)
+        
+        return x
