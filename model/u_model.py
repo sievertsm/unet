@@ -194,7 +194,7 @@ class UModel_Segment(nn.Module):
         
         return x
     
-class UModel_Segment_clsm(nn.Module):
+class UModel(nn.Module):
     '''
     Combines a basic block, downsample block, and an upsample block to create the U-net architecture
     Input:  
@@ -224,6 +224,7 @@ class UModel_Segment_clsm(nn.Module):
         self.down_blocks=[]
         for c0, c1 in channels_down:
             self.down_blocks.append(down_block(c0, c1))
+        self.down_blocks = torch.nn.ModuleList(self.down_blocks)
         
         # define bottleneck
         c0 = channels_down[-1][1]
@@ -239,6 +240,7 @@ class UModel_Segment_clsm(nn.Module):
         self.up_blocks=[]
         for c0, c1 in channels_up:
             self.up_blocks.append(up_block(c0, c1))
+        self.up_blocks = torch.nn.ModuleList(self.up_blocks)
         
         # final batch normalization and 1x1 convolution to match input
         c0 = channels_up[-1][1]
@@ -246,6 +248,9 @@ class UModel_Segment_clsm(nn.Module):
 
         self.bn_finish = nn.BatchNorm2d(c0)
         self.finish = nn.Conv2d(c0, c1, kernel_size=1)
+        
+    def name(self):
+        return f"{self.__class__.__name__}-{self._input_channels}-{self._num_classes}-{self._depth}-{self._first_layer}"
 
     def _next_pow2(self, x):
         pow=0
@@ -256,29 +261,23 @@ class UModel_Segment_clsm(nn.Module):
     def forward(self, x):
 
         # downsample
-        print('Down')
         skips=[]
         for block in self.down_blocks:
             x, s = block(x)
-            print(x.shape)
             skips.append(s)
         
         # middle layers
-        print('Bottle')
         x = self.bottle(x)
-        print(x.shape)
         
         # upsample with skip connections
-        print('Up')
         skips = skips[::-1]
         for i, block in enumerate(self.up_blocks):
             x = block(x, skips[i])
-            print(x.shape)
         
-        print('Finish')
         # reshape with 1x1
         x = self.bn_finish(x)
         x = self.finish(x)
-        print(x.shape)
+        
+#         x = self._activation(x)
         
         return x
